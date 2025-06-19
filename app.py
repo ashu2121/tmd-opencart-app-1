@@ -83,6 +83,7 @@ def ask_question():
     try:
         response = qa_chain({"query": question})
         answer = response["result"]
+        answer  = answer.replace("Based on the context provided","") 
         #source_docs = []
         #for doc in response["source_documents"]:
         #    source_docs.append({
