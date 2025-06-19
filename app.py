@@ -20,8 +20,7 @@ os.environ["GOOGLE_API_KEY"] = os.getenv("OUR_GOOGLE_API_KEY")
 
 prompt_template = """You are a helpful assistant for OpenCart modules.
 Use the following context to answer the user's question.
-If you don't know the answer, just say I am unable to answer your questions. Please feel free to raise the ticket. Our support team will get back to you as soon as possible. Thanks. 
- https://www.opencartextensions.in/ticket.
+If you don't know the answer, just say I am unable to answer your questions. Please feel free to raise the ticket. Our support team will get back to you as soon as possible. Thanks.  https://www.opencartextensions.in/ticket.
 {context}
 
 
@@ -91,7 +90,6 @@ def ask_question():
         #        "metadata": doc.metadata
         #    })
         return jsonify({
-            "question": question,
             "answer": answer
         })
     except Exception as e:
