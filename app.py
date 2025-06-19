@@ -1,54 +1,107 @@
-
-from flask import Flask, request, jsonify
-import openai
-import faiss
-import numpy as np
-import pickle
 import os
-# 🔑 Set your OpenAI API Key
-openai.api_key = os.getenv("OUR_OPEN_API_KEY")
+import pandas as pd
+from flask import Flask, request, jsonify # Using Flask for the web server
+import google.generativeai as genai
 
-# 🔁 Load FAISS index and metadata
-index = faiss.read_index("rag_index.faiss")
-with open("rag_texts.pkl", "rb") as f:
-    texts = pickle.load(f)  
+# Ensure these are installed: pip install langchain_google_genai langchain faiss-cpu Flask
+from langchain_google_genai import ChatGoogleGenerativeAI, GoogleGenerativeAIEmbeddings
+from langchain.vectorstores import FAISS
+from langchain.chains import RetrievalQA
+from langchain.prompts import PromptTemplate
+from langchain.chains import RetrievalQA
 
-# 🌐 Initialize Flask app
+
 app = Flask(__name__)
 
-@app.route("/chat", methods=["GET"])
-def chat():
+# --- Configuration ---
+# Retrieve API key securely from environment variables
+# (Cloud Run injects these, DO NOT hardcode in production)
+os.environ["GOOGLE_API_KEY"] = os.getenv("OUR_GOOGLE_API_KEY")
+
+
+prompt_template = """You are a helpful assistant for OpenCart modules.
+Use the following context to answer the user's question.
+If you don't know the answer, just say I am unable to answer your questions. Please feel free to raise the ticket. Our support team will get back to you as soon as possible. Thanks. 
+ https://www.opencartextensions.in/ticket.
+{context}
+
+Question: {question}
+Answer:"""
+
+PROMPT = PromptTemplate(
+    template=prompt_template, input_variables=["context", "question"]
+)
+
+save_directory = "./faiss_index_opencart"
+EXCEL_FILE_PATH = "./opencart_data_1.xlsx" # Relative path within the Docker container
+embeddings = GoogleGenerativeAIEmbeddings(model="models/embedding-001")
+
+llm = ChatGoogleGenerativeAI(model="gemini-2.5-pro", temperature=0.0) # temperature=0.0 for deterministic answers
+
+
+if os.path.exists(save_directory):
+    print(f"Loading FAISS index from {save_directory}...")
+    # 'allow_dangerous_deserialization=True' is often needed for security reasons when loading local indexes.
+    vector_store = FAISS.load_local(save_directory, embeddings, allow_dangerous_deserialization=True)
+    print("FAISS index loaded successfully.")
+else:
+    print(f"Error: FAISS index directory not found at {save_directory}.")
+    print("Please ensure you have run the previous code to save the index, and that the directory path is correct.")
+    exit() # Exit if the index is not found
+
+qa_chain = RetrievalQA.from_chain_type(
+    llm=llm,
+    chain_type="stuff", # 'stuff' means all retrieved docs are "stuffed" into the prompt
+    retriever=vector_store.as_retriever(search_kwargs={"k": 3}), # Retrieve top 3 relevant chunks
+    return_source_documents=True, # To see which documents were retrieved
+    chain_type_kwargs={"prompt": PROMPT}
+  )
+
+
+vector_store = None # Initialize as None
+llm = None
+qa_chain = None
+embeddings = None
+
+@app.route('/')
+def health_check():
+    return jsonify({"status": "running", "message": "RAG API is live!"})
+
+@app.route('/ask', methods=['GET'])
+def ask_question():
+    global qa_chain # Access the global qa_chain
+
+    if qa_chain is None:
+        if qa_chain is None: # If initialization failed
+            return jsonify({"error": "RAG system failed to initialize"}), 500
+
+    data = request.json
+    question = data.get('question')
+
+    if not question:
+        return jsonify({"error": "No question provided"}), 400
+
+    print(f"Received question: {question}")
     try:
-        user_query = request.args.get("query")
-        if not user_query:
-            return jsonify({"error": "Missing 'query' parameter"}), 400
-
-        # Embed user query
-        response = openai.embeddings.create(
-            input=[user_query],
-            model="text-embedding-3-small"
-        )
-        query_embedding = np.array(response.data[0].embedding).astype("float32").reshape(1, -1)
-
-        # Search in FAISS
-        D, I = index.search(query_embedding, k=3)
-        relevant_chunks = [texts[i] for i in I[0]]
-
-        # Build context
-        context = "\n\n".join(relevant_chunks)
-        prompt = f"Use the context below to answer the question.\n\nContext:\n{context}\n\nQuestion: {user_query}"
-
-        # Call OpenAI
-        completion = openai.chat.completions.create(
-            model="gpt-4",
-            messages=[{"role": "user", "content": prompt}]
-        )
-        reply = completion.choices[0].message.content.strip()
-        return jsonify({"response": reply})
-
+        response = qa_chain({"query": question})
+        answer = response["result"]
+        source_docs = []
+        for doc in response["source_documents"]:
+            source_docs.append({
+                "content": doc.page_content,
+                "metadata": doc.metadata
+            })
+        return jsonify({
+            "question": question,
+            "answer": answer,
+            "sources": source_docs
+        })
     except Exception as e:
+        print(f"Error processing question: {e}")
         return jsonify({"error": str(e)}), 500
 
-# 🚀 Start server
-if __name__ == "__main__":
-    app.run(host='0.0.0.0', port=5000, debug=True)
+if __name__ == '__main__':
+    # Initialize the RAG system when the app starts
+    # For Cloud Run, the port is provided by the PORT environment variable
+    port = int(os.environ.get('PORT', 8080))
+    app.run(host='0.0.0.0', port=port, debug = True)

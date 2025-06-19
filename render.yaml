@@ -1,6 +1,6 @@
 services:
   - type: web
-    name: tmd-opencart-chat
+    name: tmd-opencart-chat-1
     runtime: python
     buildCommand: "pip install -r requirements.txt"
     startCommand: "python app.py"
