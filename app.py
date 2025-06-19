@@ -74,8 +74,8 @@ def ask_question():
         if qa_chain is None: # If initialization failed
             return jsonify({"error": "RAG system failed to initialize"}), 500
 
-    data = request.json
-    question = data.get('question')
+    
+    question = request.args.get("question")
 
     if not question:
         return jsonify({"error": "No question provided"}), 400
