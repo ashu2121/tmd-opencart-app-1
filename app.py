@@ -12,6 +12,8 @@ from langchain_community.vectorstores import FAISS
 
 app = Flask(__name__)
 
+## ConversationalRetrievalChain for memory 
+
 # --- Configuration ---
 # Retrieve API key securely from environment variables
 # (Cloud Run injects these, DO NOT hardcode in production)
@@ -51,7 +53,7 @@ else:
 qa_chain = RetrievalQA.from_chain_type(
     llm=llm,
     chain_type="stuff", # 'stuff' means all retrieved docs are "stuffed" into the prompt
-    retriever=vector_store.as_retriever(search_kwargs={"k": 3}), # Retrieve top 3 relevant chunks
+    retriever=vector_store.as_retriever(search_kwargs={"k": 1}), # Retrieve top 3 relevant chunks
     return_source_documents=True, # To see which documents were retrieved
     chain_type_kwargs={"prompt": PROMPT}
   )
