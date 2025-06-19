@@ -7,3 +7,4 @@ openpyxl
 google-generativeai
 langchain
 langchain-google-genai
+langchain_community
