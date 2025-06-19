@@ -9,6 +9,7 @@ from langchain.chains import RetrievalQA
 from langchain.prompts import PromptTemplate
 from langchain.chains import RetrievalQA
 from langchain_community.vectorstores import FAISS
+import time
 
 app = Flask(__name__)
 
@@ -20,7 +21,7 @@ app = Flask(__name__)
 os.environ["GOOGLE_API_KEY"] = os.getenv("OUR_GOOGLE_API_KEY")
 
 
-prompt_template = """You are a helpful assistant for OpenCart modules.
+prompt_template = """You are a helpful assistant for OpenCart modules. Answer concisely.
 Use the following context to answer the user's question.
 If you don't know the answer, just say I am unable to answer your questions. Please feel free to raise the ticket. Our support team will get back to you as soon as possible. Thanks.  https://www.opencartextensions.in/ticket.
 {context}
@@ -50,6 +51,7 @@ else:
     print("Please ensure you have run the previous code to save the index, and that the directory path is correct.")
     exit() # Exit if the index is not found
 
+start_retrieval_time = time.time()
 qa_chain = RetrievalQA.from_chain_type(
     llm=llm,
     chain_type="stuff", # 'stuff' means all retrieved docs are "stuffed" into the prompt
@@ -57,6 +59,8 @@ qa_chain = RetrievalQA.from_chain_type(
     return_source_documents=True, # To see which documents were retrieved
     chain_type_kwargs={"prompt": PROMPT}
   )
+end_retrieval_time = time.time()
+print(f"Retrieval time: {end_retrieval_time - start_retrieval_time:.2f} seconds.")
 
 
 vector_store = None # Initialize as None
@@ -75,7 +79,6 @@ def ask_question():
         if qa_chain is None: # If initialization failed
             return jsonify({"error": "RAG system failed to initialize"}), 500
 
-    
     question = request.args.get("question")
 
     if not question:
@@ -83,15 +86,24 @@ def ask_question():
 
     print(f"Received question: {question}")
     try:
+        start_qa_time = time.time()    
         response = qa_chain({"query": question})
         answer = response["result"]
+        end_qa_time = time.time()
+        print(f"Total QA chain (LLM) time: {end_qa_time - start_qa_time:.2f} seconds.")
+
         answer  = answer.replace("Based on the context provided","") 
         #source_docs = []
-        #for doc in response["source_documents"]:
+        for doc in response["source_documents"]:
+            print(f"Content length: {len(doc.page_content)} characters") # Check length of retrieved content
+            print(f"Source File: {doc.metadata.get('source_file', 'N/A')}, Row Number: {doc.metadata.get('row_number', 'N/A')}")
+            print("-" * 30)
+
         #    source_docs.append({
         #        "content": doc.page_content,
         #        "metadata": doc.metadata
         #    })
+
         return jsonify({
             "answer": answer
         })
