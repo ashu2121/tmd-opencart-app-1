@@ -24,6 +24,7 @@ If you don't know the answer, just say I am unable to answer your questions. Ple
  https://www.opencartextensions.in/ticket.
 {context}
 
+
 Question: {question}
 Answer:"""
 
@@ -35,7 +36,7 @@ save_directory = "./faiss_index_opencart"
 EXCEL_FILE_PATH = "./opencart_data_1.xlsx" # Relative path within the Docker container
 embeddings = GoogleGenerativeAIEmbeddings(model="models/embedding-001")
 
-llm = ChatGoogleGenerativeAI(model="gemini-2.5-pro", temperature=0.0) # temperature=0.0 for deterministic answers
+llm = ChatGoogleGenerativeAI(model="gemini-2.5-pro", temperature=0.1) # temperature=0.0 for deterministic answers
 
 
 if os.path.exists(save_directory):
