@@ -60,7 +60,6 @@ qa_chain = RetrievalQA.from_chain_type(
 
 vector_store = None # Initialize as None
 llm = None
-qa_chain = None
 embeddings = None
 
 @app.route('/')
