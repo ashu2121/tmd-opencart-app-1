@@ -2,6 +2,7 @@ import os
 import pandas as pd
 from flask import Flask, request, jsonify # Using Flask for the web server
 import google.generativeai as genai
+from flask_cors import CORS
 
 # Ensure these are installed: pip install langchain_google_genai langchain faiss-cpu Flask
 from langchain_google_genai import ChatGoogleGenerativeAI, GoogleGenerativeAIEmbeddings
@@ -12,6 +13,7 @@ from langchain_community.vectorstores import FAISS
 import time
 
 app = Flask(__name__)
+CORS(app)  # Enable for all origins
 
 ## ConversationalRetrievalChain for memory 
 
