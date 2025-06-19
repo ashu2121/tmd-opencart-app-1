@@ -5,11 +5,10 @@ import google.generativeai as genai
 
 # Ensure these are installed: pip install langchain_google_genai langchain faiss-cpu Flask
 from langchain_google_genai import ChatGoogleGenerativeAI, GoogleGenerativeAIEmbeddings
-from langchain.vectorstores import FAISS
 from langchain.chains import RetrievalQA
 from langchain.prompts import PromptTemplate
 from langchain.chains import RetrievalQA
-
+from langchain_community.vectorstores import FAISS
 
 app = Flask(__name__)
 
